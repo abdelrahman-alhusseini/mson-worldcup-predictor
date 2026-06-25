@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: mson-worldcup-predictor
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: HOST
+        value: 0.0.0.0
+      - key: STATIC_DIR
+        value: ../frontend/build/web
+      - key: DATABASE_URL
+        sync: false

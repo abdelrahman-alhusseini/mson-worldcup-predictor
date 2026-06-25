@@ -1,0 +1,9 @@
+{
+  "name": "Michael & Son Cup",
+  "short_name": "M&S Cup",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#061B3A",
+  "theme_color": "#0057B8",
+  "description": "Internal match prediction app"
+}

@@ -2803,6 +2803,17 @@ String flagEmojiForTeam(String team) {
     'usa': '🇺🇸',
     'united states': '🇺🇸',
     'wales': '🏴',
+    'England': '🇬🇧',
+    'uk': '🇬🇧',
+    'united kingdom': '🇬🇧',
+    'dr congo': '🇨🇩',
+    'congo': '🇨🇩',
+    'democratic republic of congo': '🇨🇩',
+    'congo dr': '🇨🇩',
+    'algeria': '🇩🇿',
+    'uzbekistan': '🇺🇿',
+    'uzebakistan': '🇺🇿',
+    'uzbakistan': '🇺🇿',
   };
   return flags[key] ?? '⚽';
 }

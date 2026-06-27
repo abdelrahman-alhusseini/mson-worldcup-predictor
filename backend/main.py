@@ -731,7 +731,18 @@ class Handler(BaseHTTPRequestHandler):
             with get_db() as db:
                 rows = db.execute(
                     """
-                    SELECT p.prediction, p.points, p.created_at, m.team_a, m.team_b, m.kickoff_at, m.stage, m.status, m.final_result
+                    SELECT
+                        p.match_id,
+                        p.prediction,
+                        p.points,
+                        p.created_at,
+                        m.team_a,
+                        m.team_b,
+                        m.kickoff_at,
+                        m.vote_deadline_at,
+                        m.stage,
+                        m.status,
+                        m.final_result
                     FROM predictions p
                     JOIN matches m ON m.id = p.match_id
                     WHERE p.user_id = ?

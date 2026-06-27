@@ -2009,6 +2009,7 @@ class MyPicksPage extends StatefulWidget {
 
 class _MyPicksPageState extends State<MyPicksPage> {
   late Future<List<dynamic>> future;
+  int? unlockingMatchId;
 
   @override
   void initState() {
@@ -2017,6 +2018,60 @@ class _MyPicksPageState extends State<MyPicksPage> {
   }
 
   void refresh() => setState(() => future = widget.api.myPredictions());
+
+  Future<void> unlockFromMyPicks(Map<String, dynamic> row) async {
+    final matchId = row['match_id'];
+    if (matchId == null) {
+      showSnack(
+        context,
+        'Please open Match Centre to change this prediction.',
+        isError: true,
+      );
+      return;
+    }
+
+    final fakeMatch = {'team_a': row['team_a'], 'team_b': row['team_b']};
+    final currentPick =
+        predictionLabel(fakeMatch, row['prediction'].toString());
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unlock prediction?'),
+        content: Text(
+          'This will remove $currentPick. You can choose again before the voting deadline closes.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Unlock'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      setState(() => unlockingMatchId = matchId as int);
+      await widget.api.unlockPrediction(matchId as int);
+      if (mounted) {
+        showSnack(
+          context,
+          'Prediction unlocked. Go to Match Centre and choose again.',
+        );
+        refresh();
+      }
+    } catch (e) {
+      if (mounted) showSnack(context, e.toString(), isError: true);
+    } finally {
+      if (mounted) setState(() => unlockingMatchId = null);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2032,13 +2087,17 @@ class _MyPicksPageState extends State<MyPicksPage> {
               Row(
                 children: [
                   const Expanded(
-                      child: Text('My Picks',
-                          style: TextStyle(
-                              fontSize: 30, fontWeight: FontWeight.w900))),
+                    child: Text(
+                      'My Picks',
+                      style:
+                          TextStyle(fontSize: 30, fontWeight: FontWeight.w900),
+                    ),
+                  ),
                   FilledButton.icon(
-                      onPressed: refresh,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Refresh')),
+                    onPressed: refresh,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Refresh'),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -2048,8 +2107,9 @@ class _MyPicksPageState extends State<MyPicksPage> {
                 ErrorState(message: snapshot.error.toString(), onRetry: refresh)
               else if ((snapshot.data ?? []).isEmpty)
                 const EmptyState(
-                    title: 'No predictions yet',
-                    message: 'Your locked predictions will appear here.')
+                  title: 'No predictions yet',
+                  message: 'Your locked predictions will appear here.',
+                )
               else
                 Column(
                   children: (snapshot.data ?? [])
@@ -2057,36 +2117,90 @@ class _MyPicksPageState extends State<MyPicksPage> {
                       .map((row) {
                     final fakeMatch = {
                       'team_a': row['team_a'],
-                      'team_b': row['team_b']
+                      'team_b': row['team_b'],
                     };
+
+                    final deadlineValue =
+                        (row['vote_deadline_at'] ?? row['kickoff_at'])
+                            .toString();
+                    final deadline = DateTime.parse(deadlineValue).toLocal();
+                    final isFinished = row['status'] == 'finished';
+                    final canUnlock =
+                        !isFinished && deadline.isAfter(DateTime.now());
+                    final matchId = row['match_id'];
+                    final isUnlocking =
+                        matchId != null && unlockingMatchId == matchId;
+
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: GlassCard(
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('${row['team_a']} vs ${row['team_b']}',
-                                      style: const TextStyle(
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${row['team_a']} vs ${row['team_b']}',
+                                        style: const TextStyle(
                                           fontSize: 18,
-                                          fontWeight: FontWeight.w900)),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                      'Pick: ${predictionLabel(fakeMatch, row['prediction'].toString())}',
-                                      style: const TextStyle(color: mutedNavy)),
-                                ],
-                              ),
-                            ),
-                            Text(
-                                row['status'] == 'finished'
-                                    ? '${row['points']} pt'
-                                    : 'Pending',
-                                style: const TextStyle(
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Pick: ${predictionLabel(fakeMatch, row['prediction'].toString())}',
+                                        style:
+                                            const TextStyle(color: mutedNavy),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Voting deadline: ${formatKickoff(deadline)}',
+                                        style: const TextStyle(
+                                          color: mutedNavy,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Text(
+                                  row['status'] == 'finished'
+                                      ? '${row['points']} pt'
+                                      : 'Pending',
+                                  style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w900,
-                                    color: brandNavy)),
+                                    color: brandNavy,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (canUnlock) ...[
+                              const SizedBox(height: 14),
+                              OutlinedButton.icon(
+                                onPressed: isUnlocking
+                                    ? null
+                                    : () => unlockFromMyPicks(row),
+                                icon: const Icon(Icons.lock_open),
+                                label: Text(
+                                  isUnlocking
+                                      ? 'Unlocking...'
+                                      : 'Unlock / change pick',
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: primaryBlue,
+                                  side: const BorderSide(color: primaryBlue),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),

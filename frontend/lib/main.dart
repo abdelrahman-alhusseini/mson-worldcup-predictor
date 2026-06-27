@@ -2758,7 +2758,7 @@ String flagEmojiForTeam(String team) {
     'denmark': '🇩🇰',
     'ecuador': '🇪🇨',
     'egypt': '🇪🇬',
-    'england': '🏴',
+    'england': '🇬🇧',
     'france': '🇫🇷',
     'germany': '🇩🇪',
     'ghana': '🇬🇭',

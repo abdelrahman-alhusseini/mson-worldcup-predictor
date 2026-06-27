@@ -354,6 +354,11 @@ class ApiClient {
     }) as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> adminMatchPredictions(int matchId) async {
+    return await _request('GET', '/admin/matches/$matchId/predictions')
+        as Map<String, dynamic>;
+  }
+
   Future<void> deleteMatch(int matchId) async {
     await _request('DELETE', '/admin/matches/$matchId');
   }
@@ -2104,6 +2109,155 @@ class _AdminPageState extends State<AdminPage> {
     }
   }
 
+  Future<void> viewPredictions(Map<String, dynamic> match) async {
+    Future<Map<String, dynamic>> future =
+        widget.api.adminMatchPredictions(match['id'] as int);
+
+    Future<void> applyResult(
+      BuildContext dialogContext,
+      StateSetter setDialogState,
+      String result,
+    ) async {
+      final confirm = await showConfirmDialog(
+        dialogContext,
+        title: 'Apply result and points?',
+        message:
+            'Final result will be ${predictionLabel(match, result)}. Correct predictions get +1 point and wrong predictions get 0.',
+        confirmLabel: 'Apply points',
+      );
+      if (!confirm) return;
+
+      try {
+        final data = await widget.api.setResult(match['id'] as int, result);
+        if (!mounted) return;
+        showSnack(
+          context,
+          'Scored ${data['updated_predictions']} predictions, ${data['correct_predictions']} correct',
+        );
+        refreshAll();
+        setDialogState(() {
+          future = widget.api.adminMatchPredictions(match['id'] as int);
+        });
+      } catch (e) {
+        if (mounted) showErrorDialog(context, e.toString());
+      }
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          return AlertDialog(
+            title: Text('${match['team_a']} vs ${match['team_b']}'),
+            content: SizedBox(
+              width: 780,
+              child: FutureBuilder<Map<String, dynamic>>(
+                future: future,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      !snapshot.hasData) {
+                    return const SizedBox(
+                      height: 220,
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return FriendlyErrorBox(
+                      title: 'Could not load predictions',
+                      message: snapshot.error.toString(),
+                    );
+                  }
+
+                  final data = snapshot.data ?? {};
+                  final rows = (data['rows'] as List? ?? [])
+                      .cast<Map<String, dynamic>>();
+                  final matchInfo =
+                      (data['match'] as Map? ?? {}).cast<String, dynamic>();
+                  final finalLabel =
+                      matchInfo['final_result_label']?.toString() ?? 'Not set';
+                  final total = data['total_predictions'] ?? rows.length;
+                  final correct = data['correct_predictions'] ?? 0;
+                  final wrong = data['wrong_predictions'] ?? 0;
+
+                  return SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 8,
+                          children: [
+                            Chip(label: Text('Total: $total')),
+                            Chip(label: Text('Correct: $correct')),
+                            Chip(label: Text('Wrong: $wrong')),
+                            Chip(label: Text('Current result: $finalLabel')),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        const Text(
+                          'Apply final result:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            color: brandNavy,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            FilledButton(
+                              onPressed: () => applyResult(
+                                  dialogContext, setDialogState, 'A'),
+                              child: Text('${match['team_a']} won'),
+                            ),
+                            OutlinedButton(
+                              onPressed: () => applyResult(
+                                  dialogContext, setDialogState, 'DRAW'),
+                              child: const Text('Draw'),
+                            ),
+                            FilledButton(
+                              onPressed: () => applyResult(
+                                  dialogContext, setDialogState, 'B'),
+                              child: Text('${match['team_b']} won'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        if (rows.isEmpty)
+                          const Text(
+                            'No predictions for this match yet.',
+                            style: TextStyle(
+                              color: mutedNavy,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          )
+                        else
+                          Column(
+                            children: rows
+                                .map((row) => PredictionReviewRow(row: row))
+                                .toList(),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Close'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> deleteMatch(Map<String, dynamic> match) async {
     final confirm = await showConfirmDialog(
       context,
@@ -2422,6 +2576,7 @@ class _AdminPageState extends State<AdminPage> {
                                 onDelete: () => deleteMatch(match),
                                 onSetResult: (result) =>
                                     setResult(match, result),
+                                onViewPredictions: () => viewPredictions(match),
                               )),
                   ],
                 ),
@@ -2476,68 +2631,204 @@ class _AdminPageState extends State<AdminPage> {
 }
 
 class AdminMatchRow extends StatelessWidget {
-  const AdminMatchRow(
-      {super.key,
-      required this.match,
-      required this.onEdit,
-      required this.onDelete,
-      required this.onSetResult});
+  const AdminMatchRow({
+    super.key,
+    required this.match,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onSetResult,
+    required this.onViewPredictions,
+  });
+
   final Map<String, dynamic> match;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final ValueChanged<String> onSetResult;
+  final VoidCallback onViewPredictions;
 
   @override
   Widget build(BuildContext context) {
     final deadline = DateTime.parse(
-            (match['vote_deadline_at'] ?? match['kickoff_at']).toString())
-        .toLocal();
+      (match['vote_deadline_at'] ?? match['kickoff_at']).toString(),
+    ).toLocal();
+    final stats = (match['stats'] as Map?)?.cast<String, dynamic>();
+    final totalPredictions = stats?['total'] ?? 0;
+    final finalResult = match['final_result'];
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-          color: const Color(0xFFF7FAFF),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFD9E5F4))),
+        color: const Color(0xFFF7FAFF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD9E5F4)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Expanded(
-                  child: Text(
-                      '${flagEmojiForTeam(match['team_a'].toString())} ${match['team_a']} vs ${flagEmojiForTeam(match['team_b'].toString())} ${match['team_b']}',
-                      style: const TextStyle(
-                          fontSize: 17, fontWeight: FontWeight.w900))),
+                child: Text(
+                  '${flagEmojiForTeam(match['team_a'].toString())} ${match['team_a']} vs ${flagEmojiForTeam(match['team_b'].toString())} ${match['team_b']}',
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
               IconButton(
-                  onPressed: onEdit, icon: const Icon(Icons.edit_outlined)),
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined),
+              ),
               IconButton(
-                  onPressed: onDelete,
-                  icon: const Icon(Icons.delete_outline,
-                      color: Color(0xFFB00020))),
+                onPressed: onDelete,
+                icon: const Icon(
+                  Icons.delete_outline,
+                  color: Color(0xFFB00020),
+                ),
+              ),
             ],
           ),
           Text(
-              '${match['stage']} • Kickoff: ${formatKickoff(DateTime.parse(match['kickoff_at']).toLocal())}',
-              style: const TextStyle(color: mutedNavy)),
-          Text('Voting deadline: ${formatKickoff(deadline)}',
-              style: const TextStyle(
-                  color: mutedNavy, fontWeight: FontWeight.w700)),
+            '${match['stage']} • Kickoff: ${formatKickoff(DateTime.parse(match['kickoff_at']).toLocal())}',
+            style: const TextStyle(color: mutedNavy),
+          ),
+          Text(
+            'Voting deadline: ${formatKickoff(deadline)}',
+            style: const TextStyle(
+              color: mutedNavy,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Predictions: $totalPredictions • Result: ${finalResult == null ? 'Not set' : predictionLabel(match, finalResult.toString())}',
+            style: const TextStyle(
+              color: brandNavy,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
+              FilledButton.icon(
+                onPressed: onViewPredictions,
+                icon: const Icon(Icons.visibility_outlined, size: 18),
+                label: const Text('View predictions'),
+              ),
               OutlinedButton(
-                  onPressed: () => onSetResult('A'),
-                  child: Text('${match['team_a']} won')),
+                onPressed: () => onSetResult('A'),
+                child: Text('${match['team_a']} won'),
+              ),
               OutlinedButton(
-                  onPressed: () => onSetResult('DRAW'),
-                  child: const Text('Draw')),
+                onPressed: () => onSetResult('DRAW'),
+                child: const Text('Draw'),
+              ),
               OutlinedButton(
-                  onPressed: () => onSetResult('B'),
-                  child: Text('${match['team_b']} won')),
+                onPressed: () => onSetResult('B'),
+                child: Text('${match['team_b']} won'),
+              ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class PredictionReviewRow extends StatelessWidget {
+  const PredictionReviewRow({super.key, required this.row});
+  final Map<String, dynamic> row;
+
+  @override
+  Widget build(BuildContext context) {
+    final isCorrect = row['is_correct'];
+    final points = row['points'] ?? 0;
+
+    Color badgeColor;
+    String badgeText;
+
+    if (isCorrect == true) {
+      badgeColor = winGreen;
+      badgeText = 'Correct +1';
+    } else if (isCorrect == false) {
+      badgeColor = warningOrange;
+      badgeText = 'Wrong +0';
+    } else {
+      badgeColor = mutedNavy;
+      badgeText = 'Pending';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7FAFF),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFD9E5F4)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  row['full_name']?.toString() ?? 'Player',
+                  style: const TextStyle(
+                    color: brandNavy,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  row['username']?.toString() ?? '',
+                  style: const TextStyle(color: mutedNavy, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              row['prediction_label']?.toString() ?? '-',
+              style: const TextStyle(
+                color: brandNavy,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: badgeColor.withOpacity(.12),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: badgeColor.withOpacity(.35)),
+            ),
+            child: Text(
+              badgeText,
+              style: TextStyle(
+                color: badgeColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 52,
+            child: Text(
+              '$points pts',
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: primaryBlue,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
           ),
         ],
       ),
@@ -2893,7 +3184,6 @@ String flagEmojiForTeam(String team) {
     'usa': '🇺🇸',
     'united states': '🇺🇸',
     'wales': '🏴',
-    'England': '🇬🇧',
     'uk': '🇬🇧',
     'united kingdom': '🇬🇧',
     'dr congo': '🇨🇩',

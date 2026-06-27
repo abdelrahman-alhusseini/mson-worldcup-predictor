@@ -18,6 +18,7 @@ const winGreen = Color(0xFF18A66A);
 const warningOrange = Color(0xFFC47A00);
 const appWallpaperAsset = 'assets/app_wallpaper.png';
 const appWallpaperWideAsset = 'assets/app_wallpaper_wide.png';
+const displayFlyerAsset = 'assets/display_flyer_bg.png';
 
 const configuredApiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
@@ -54,10 +55,8 @@ String get displayQrUrl {
 
 bool get isDisplayRoute {
   final uri = Uri.base;
-
   final path = uri.path.toLowerCase();
   final fragment = uri.fragment.toLowerCase();
-
   final query = uri.queryParameters.map(
     (key, value) => MapEntry(key.toLowerCase(), value.toLowerCase()),
   );
@@ -409,7 +408,7 @@ class _DisplayScreenState extends State<DisplayScreen> {
   void initState() {
     super.initState();
     future = _load();
-    timer = Timer.periodic(const Duration(seconds: 12), (_) {
+    timer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (mounted) refresh();
     });
   }
@@ -441,106 +440,114 @@ class _DisplayScreenState extends State<DisplayScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: AppScreenBackground(
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 42, vertical: 34),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final compact = constraints.maxWidth < 1000;
-                final titleBlock = DisplayTitleBlock(updatedText: _updatedText);
-                final qrBlock = const DisplayQrBlock();
-                final leaderboardBlock =
-                    DisplayLeaderboardBlock(future: future, onRefresh: refresh);
+      backgroundColor: const Color(0xFF061B34),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 920;
 
-                if (compact) {
-                  return ListView(
-                    children: [
-                      titleBlock,
-                      const SizedBox(height: 20),
-                      qrBlock,
-                      const SizedBox(height: 20),
-                      leaderboardBlock,
-                    ],
-                  );
-                }
+          final leaderboard = DisplayLeaderboardBlock(
+            future: future,
+            onRefresh: refresh,
+            updatedText: _updatedText,
+          );
 
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(flex: 33, child: titleBlock),
-                    const SizedBox(width: 28),
-                    Expanded(flex: 34, child: qrBlock),
-                    const SizedBox(width: 28),
-                    Expanded(flex: 33, child: leaderboardBlock),
-                  ],
-                );
-              },
-            ),
-          ),
-        ),
+          const qr = DisplayQrBlock();
+
+          if (compact) {
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                const DisplayFlyerBackground(),
+                SafeArea(
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            qr,
+                            const SizedBox(height: 14),
+                            leaderboard,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+
+          final w = constraints.maxWidth;
+          final h = constraints.maxHeight;
+
+          final leaderboardWidth = (w * .34).clamp(430.0, 560.0).toDouble();
+          final qrWidth = (w * .25).clamp(330.0, 430.0).toDouble();
+          final sidePadding = (w * .032).clamp(34.0, 64.0).toDouble();
+          final bottomPadding = (h * .045).clamp(30.0, 58.0).toDouble();
+
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              const DisplayFlyerBackground(),
+              Positioned(
+                left: sidePadding,
+                bottom: bottomPadding,
+                width: leaderboardWidth,
+                child: leaderboard,
+              ),
+              Positioned(
+                right: sidePadding,
+                bottom: bottomPadding,
+                width: qrWidth,
+                child: qr,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-class DisplayTitleBlock extends StatelessWidget {
-  const DisplayTitleBlock({super.key, required this.updatedText});
-  final String updatedText;
+class DisplayFlyerBackground extends StatelessWidget {
+  const DisplayFlyerBackground({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
-      padding: const EdgeInsets.all(28),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      color: const Color(0xFF061B34),
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-            decoration: BoxDecoration(
-              color: lightBlue,
-              borderRadius: BorderRadius.circular(99),
-              border: Border.all(color: borderBlue),
-            ),
-            child: const Text(
-              'LIVE COMPANY CHALLENGE',
-              style: TextStyle(
-                  color: primaryBlue,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: .7),
+          Align(
+            alignment: Alignment.topCenter,
+            child: Image.asset(
+              displayFlyerAsset,
+              width: MediaQuery.of(context).size.width,
+              fit: BoxFit.fitWidth,
+              alignment: Alignment.topCenter,
+              filterQuality: FilterQuality.high,
             ),
           ),
-          const SizedBox(height: 24),
-          const Text(
-            'Michael & Son\nWorld Cup\nPredictor',
-            style: TextStyle(
-              color: brandNavy,
-              fontSize: 46,
-              height: .98,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -1.1,
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.transparent,
+                    const Color(0xFF061B34).withOpacity(.28),
+                    const Color(0xFF061B34).withOpacity(.94),
+                  ],
+                  stops: const [.0, .48, .73, 1],
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'Scan the QR code, create your account, predict each match before the voting deadline, and climb the leaderboard.',
-            style: TextStyle(
-                color: mutedNavy,
-                fontSize: 18,
-                height: 1.35,
-                fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 22),
-          Row(
-            children: [
-              const Icon(Icons.autorenew, color: primaryBlue),
-              const SizedBox(width: 10),
-              Text(updatedText,
-                  style: const TextStyle(
-                      color: brandNavy, fontWeight: FontWeight.w900)),
-            ],
           ),
         ],
       ),
@@ -553,91 +560,158 @@ class DisplayQrBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
-      padding: const EdgeInsets.all(28),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'SCAN TO JOIN',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                color: brandNavy,
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-                letterSpacing: .8),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: const Color(0xFFE1E9F5), width: 2),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withOpacity(.10),
-                    blurRadius: 30,
-                    offset: const Offset(0, 14))
-              ],
-            ),
-            child: QrImageView(
-              data: displayQrUrl,
-              version: QrVersions.auto,
-              size: 330,
-              backgroundColor: Colors.white,
-              eyeStyle: const QrEyeStyle(
-                  eyeShape: QrEyeShape.square, color: brandNavy),
-              dataModuleStyle: const QrDataModuleStyle(
-                  dataModuleShape: QrDataModuleShape.square, color: brandNavy),
-            ),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            displayQrUrl,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style:
-                const TextStyle(color: mutedNavy, fontWeight: FontWeight.w800),
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(.95),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white.withOpacity(.72), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.30),
+            blurRadius: 32,
+            offset: const Offset(0, 18),
           ),
         ],
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final qrSize =
+              (constraints.maxWidth - 44).clamp(210.0, 315.0).toDouble();
+
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'SCAN TO JOIN',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: brandNavy,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .7,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: Color(0xFFDDE8F6), width: 2),
+                ),
+                child: QrImageView(
+                  data: displayQrUrl,
+                  version: QrVersions.auto,
+                  size: qrSize,
+                  backgroundColor: Colors.white,
+                  eyeStyle: const QrEyeStyle(
+                    eyeShape: QrEyeShape.square,
+                    color: brandNavy,
+                  ),
+                  dataModuleStyle: const QrDataModuleStyle(
+                    dataModuleShape: QrDataModuleShape.square,
+                    color: brandNavy,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Create your account and start predicting',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: brandNavy,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                displayQrUrl,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: mutedNavy,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
 class DisplayLeaderboardBlock extends StatelessWidget {
-  const DisplayLeaderboardBlock(
-      {super.key, required this.future, required this.onRefresh});
+  const DisplayLeaderboardBlock({
+    super.key,
+    required this.future,
+    required this.onRefresh,
+    required this.updatedText,
+  });
+
   final Future<List<dynamic>> future;
   final VoidCallback onRefresh;
+  final String updatedText;
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
-      padding: const EdgeInsets.all(24),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(.94),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white.withOpacity(.70), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.30),
+            blurRadius: 32,
+            offset: const Offset(0, 18),
+          ),
+        ],
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Expanded(
-                child: Text(
-                  'Top 10 Leaderboard',
-                  style: TextStyle(
-                      fontSize: 25,
-                      fontWeight: FontWeight.w900,
-                      color: brandNavy),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'TOP 10 LEADERBOARD',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: brandNavy,
+                        letterSpacing: -.2,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      updatedText,
+                      style: const TextStyle(
+                        color: mutedNavy,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               IconButton(
-                  onPressed: onRefresh,
-                  icon: const Icon(Icons.refresh, color: primaryBlue)),
+                onPressed: onRefresh,
+                icon: const Icon(Icons.refresh, color: primaryBlue),
+                tooltip: 'Refresh leaderboard',
+              ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           FutureBuilder<List<dynamic>>(
             future: future,
             builder: (context, snapshot) {
@@ -648,21 +722,26 @@ class DisplayLeaderboardBlock extends StatelessWidget {
                   child: Center(child: CircularProgressIndicator()),
                 );
               }
+
               if (snapshot.hasError) {
                 return const FriendlyErrorBox(
                   title: 'Leaderboard updating',
                   message: 'The latest scores will appear here automatically.',
                 );
               }
+
               final rows = (snapshot.data ?? []).cast<Map<String, dynamic>>();
+
               if (rows.isEmpty) {
                 return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 30),
+                  padding: EdgeInsets.symmetric(vertical: 24),
                   child: Center(
                     child: Text(
                       'No scores yet',
                       style: TextStyle(
-                          color: mutedNavy, fontWeight: FontWeight.w800),
+                        color: mutedNavy,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 );
@@ -689,6 +768,7 @@ class DisplayLeaderboardRow extends StatelessWidget {
     final rank = row['rank'] ?? '-';
     final points = row['points'] ?? 0;
     final name = row['full_name']?.toString() ?? 'Player';
+
     final medal = rank == 1
         ? '🥇'
         : rank == 2
@@ -698,20 +778,24 @@ class DisplayLeaderboardRow extends StatelessWidget {
                 : '#$rank';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: rank == 1 ? const Color(0xFFFFF6DE) : const Color(0xFFF7FAFF),
-        borderRadius: BorderRadius.circular(16),
+        color: rank == 1 ? const Color(0xFFFFF4D6) : const Color(0xFFF7FAFF),
+        borderRadius: BorderRadius.circular(15),
         border: Border.all(color: const Color(0xFFDDE8F6)),
       ),
       child: Row(
         children: [
           SizedBox(
             width: 48,
-            child: Text(medal,
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+            child: Text(
+              medal,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
           ),
           Expanded(
             child: Text(
@@ -719,14 +803,20 @@ class DisplayLeaderboardRow extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                  color: brandNavy, fontSize: 16, fontWeight: FontWeight.w900),
+                color: brandNavy,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Text(
             '$points pts',
             style: const TextStyle(
-                color: primaryBlue, fontSize: 16, fontWeight: FontWeight.w900),
+              color: primaryBlue,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ],
       ),

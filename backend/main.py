@@ -488,6 +488,7 @@ class Handler(BaseHTTPRequestHandler):
             or path == "/me"
             or path == "/matches"
             or path == "/predictions"
+            or path.startswith("/predictions/")
             or path == "/leaderboard"
             or path == "/my-predictions"
             or path.startswith("/auth/")
@@ -640,6 +641,31 @@ class Handler(BaseHTTPRequestHandler):
                 except DB_INTEGRITY_ERROR:
                     raise ApiError(409, "You already locked a prediction for this match")
             return {"ok": True, "message": "Prediction locked"}
+
+        if method == "DELETE" and path.startswith("/predictions/"):
+            user = require_user(self.headers)
+            parts = path.split("/")
+            try:
+                match_id = int(parts[2])
+            except Exception:
+                raise ApiError(400, "Invalid match_id")
+
+            with get_db() as db:
+                match = db.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
+                if not match:
+                    raise ApiError(404, "Match not found")
+                if match["status"] == "finished" or vote_deadline_for_match(match) <= utc_now():
+                    raise ApiError(409, "Voting deadline passed. Prediction cannot be unlocked.")
+
+                cur = db.execute(
+                    "DELETE FROM predictions WHERE user_id = ? AND match_id = ?",
+                    (user["id"], match_id),
+                )
+                if cur.rowcount == 0:
+                    raise ApiError(404, "No locked prediction found for this match")
+                db.commit()
+
+            return {"ok": True, "message": "Prediction unlocked"}
 
         if method == "GET" and path == "/public/leaderboard":
             try:

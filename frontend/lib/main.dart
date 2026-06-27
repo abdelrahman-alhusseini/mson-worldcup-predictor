@@ -306,6 +306,10 @@ class ApiClient {
     });
   }
 
+  Future<void> unlockPrediction(int matchId) async {
+    await _request('DELETE', '/predictions/$matchId');
+  }
+
   Future<List<dynamic>> leaderboard() async {
     return await _request('GET', '/leaderboard') as List<dynamic>;
   }
@@ -1303,7 +1307,7 @@ class _HubPageState extends State<HubPage> {
       builder: (context) => AlertDialog(
         title: const Text('Lock prediction?'),
         content: Text(
-            'You selected $label. After locking, you cannot change this prediction.'),
+            'You selected $label. You can still unlock and change it before the voting deadline.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -1320,6 +1324,42 @@ class _HubPageState extends State<HubPage> {
       await widget.api.predict(match['id'] as int, prediction);
       if (mounted) {
         showSnack(context, 'Prediction locked');
+        refresh();
+      }
+    } catch (e) {
+      if (mounted) showSnack(context, e.toString(), isError: true);
+    }
+  }
+
+  Future<void> unlockPrediction(Map<String, dynamic> match) async {
+    final myPrediction = match['my_prediction'] as Map<String, dynamic>?;
+    final currentPick = myPrediction == null
+        ? 'your prediction'
+        : predictionLabel(match, myPrediction['prediction'].toString());
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unlock prediction?'),
+        content: Text(
+            'This will remove $currentPick. You can choose again before the voting deadline closes.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Unlock')),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      await widget.api.unlockPrediction(match['id'] as int);
+      if (mounted) {
+        showSnack(
+            context, 'Prediction unlocked. Choose again before the deadline.');
         refresh();
       }
     } catch (e) {
@@ -1400,7 +1440,8 @@ class _HubPageState extends State<HubPage> {
                                   width: cardWidth,
                                   child: MatchCard(
                                       match: match,
-                                      onPrediction: lockPrediction),
+                                      onPrediction: lockPrediction,
+                                      onUnlockPrediction: unlockPrediction),
                                 ))
                             .toList(),
                       );
@@ -1416,11 +1457,17 @@ class _HubPageState extends State<HubPage> {
 }
 
 class MatchCard extends StatefulWidget {
-  const MatchCard({super.key, required this.match, required this.onPrediction});
+  const MatchCard({
+    super.key,
+    required this.match,
+    required this.onPrediction,
+    required this.onUnlockPrediction,
+  });
 
   final Map<String, dynamic> match;
   final Future<void> Function(Map<String, dynamic> match, String prediction)
       onPrediction;
+  final Future<void> Function(Map<String, dynamic> match) onUnlockPrediction;
 
   @override
   State<MatchCard> createState() => _MatchCardState();
@@ -1446,6 +1493,7 @@ class _MatchCardState extends State<MatchCard> {
     final myPrediction = match['my_prediction'] as Map<String, dynamic>?;
     final canPredict =
         myPrediction == null && !predictionsClosed && !isFinished;
+    final canUnlock = myPrediction != null && !predictionsClosed && !isFinished;
 
     return GlassCard(
       padding: const EdgeInsets.all(18),
@@ -1467,9 +1515,20 @@ class _MatchCardState extends State<MatchCard> {
             ],
           ),
           const SizedBox(height: 10),
-          Text(formatKickoff(kickoff),
-              style: const TextStyle(
-                  color: mutedNavy, fontWeight: FontWeight.w700)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.event, size: 18, color: mutedNavy),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Match starts: ${formatKickoff(kickoff)}',
+                  style: const TextStyle(
+                      color: mutedNavy, fontWeight: FontWeight.w800),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           DeadlineText(deadline: deadline, isFinished: isFinished),
           const SizedBox(height: 18),
@@ -1499,10 +1558,33 @@ class _MatchCardState extends State<MatchCard> {
             ],
           ),
           const SizedBox(height: 22),
-          if (myPrediction != null)
+          if (myPrediction != null) ...[
             LockedPrediction(
-                match: match, prediction: myPrediction['prediction'].toString())
-          else if (canPredict)
+                match: match,
+                prediction: myPrediction['prediction'].toString()),
+            if (canUnlock) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: busy
+                      ? null
+                      : () async {
+                          setState(() => busy = true);
+                          await widget.onUnlockPrediction(match);
+                          if (mounted) setState(() => busy = false);
+                        },
+                  icon: const Icon(Icons.lock_open),
+                  label: Text(busy ? 'Unlocking...' : 'Unlock / change pick'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primaryBlue,
+                    side: const BorderSide(color: primaryBlue),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
+            ],
+          ] else if (canPredict)
             PredictionPicker(
               match: match,
               selected: selected,
@@ -2019,6 +2101,165 @@ class _MyPicksPageState extends State<MyPicksPage> {
   }
 }
 
+class AdminDateTimePicker extends StatelessWidget {
+  const AdminDateTimePicker({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.helperText,
+  });
+
+  final String label;
+  final DateTime value;
+  final ValueChanged<DateTime> onChanged;
+  final String? helperText;
+
+  int get _hour12 {
+    if (value.hour == 0) return 12;
+    if (value.hour > 12) return value.hour - 12;
+    return value.hour;
+  }
+
+  String get _ampm => value.hour >= 12 ? 'PM' : 'AM';
+
+  DateTime _updated({int? hour12, int? minute, String? ampm, DateTime? date}) {
+    final selectedHour12 = hour12 ?? _hour12;
+    final selectedMinute = minute ?? value.minute;
+    final selectedAmPm = ampm ?? _ampm;
+    int hour24 = selectedHour12 % 12;
+    if (selectedAmPm == 'PM') hour24 += 12;
+
+    final selectedDate = date ?? value;
+    return DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      hour24,
+      selectedMinute,
+    );
+  }
+
+  Future<void> _pickDate(BuildContext context) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: value,
+      firstDate: DateTime(2025, 1, 1),
+      lastDate: DateTime(2030, 12, 31),
+    );
+    if (picked != null) {
+      onChanged(_updated(date: picked));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 460,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7FAFF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD9E5F4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: brandNavy,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => _pickDate(context),
+            icon: const Icon(Icons.calendar_month),
+            label: Text(formatDateOnly(value)),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              SizedBox(
+                width: 92,
+                child: DropdownButtonFormField<int>(
+                  value: _hour12,
+                  decoration: const InputDecoration(labelText: 'Hour'),
+                  items: List.generate(
+                    12,
+                    (index) => DropdownMenuItem<int>(
+                      value: index + 1,
+                      child: Text('${index + 1}'),
+                    ),
+                  ),
+                  onChanged: (value) {
+                    if (value != null) onChanged(_updated(hour12: value));
+                  },
+                ),
+              ),
+              SizedBox(
+                width: 102,
+                child: DropdownButtonFormField<int>(
+                  value: value.minute,
+                  menuMaxHeight: 260,
+                  decoration: const InputDecoration(labelText: 'Min'),
+                  items: List.generate(
+                    60,
+                    (index) => DropdownMenuItem<int>(
+                      value: index,
+                      child: Text(index.toString().padLeft(2, '0')),
+                    ),
+                  ),
+                  onChanged: (minute) {
+                    if (minute != null) onChanged(_updated(minute: minute));
+                  },
+                ),
+              ),
+              SizedBox(
+                width: 100,
+                child: DropdownButtonFormField<String>(
+                  value: _ampm,
+                  decoration: const InputDecoration(labelText: 'AM/PM'),
+                  items: const [
+                    DropdownMenuItem(value: 'AM', child: Text('AM')),
+                    DropdownMenuItem(value: 'PM', child: Text('PM')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) onChanged(_updated(ampm: value));
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Will show as: ${formatKickoff(value)}',
+            style: const TextStyle(
+              color: mutedNavy,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+          if (helperText != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              helperText!,
+              style: const TextStyle(
+                color: mutedNavy,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class AdminPage extends StatefulWidget {
   const AdminPage({super.key, required this.api});
   final ApiClient api;
@@ -2031,8 +2272,8 @@ class _AdminPageState extends State<AdminPage> {
   final teamA = TextEditingController();
   final teamB = TextEditingController();
   final stage = TextEditingController(text: 'World Cup 2026');
-  final kickoff = TextEditingController();
-  final deadline = TextEditingController();
+  late DateTime newKickoffLocal;
+  late DateTime newDeadlineLocal;
   late Future<List<dynamic>> matchesFuture;
   late Future<List<dynamic>> usersFuture;
   bool busy = false;
@@ -2040,12 +2281,20 @@ class _AdminPageState extends State<AdminPage> {
   @override
   void initState() {
     super.initState();
-    final tomorrow = DateTime.now().toUtc().add(const Duration(days: 1));
-    kickoff.text = tomorrow.toIso8601String();
-    deadline.text = tomorrow.toIso8601String();
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    newKickoffLocal = DateTime(
+      tomorrow.year,
+      tomorrow.month,
+      tomorrow.day,
+      tomorrow.hour,
+      0,
+    );
+    newDeadlineLocal = newKickoffLocal.subtract(const Duration(hours: 1));
     matchesFuture = widget.api.matches();
     usersFuture = widget.api.adminUsers();
   }
+
+  String _toUtcIso(DateTime value) => value.toUtc().toIso8601String();
 
   void refreshAll() {
     setState(() {
@@ -2058,7 +2307,12 @@ class _AdminPageState extends State<AdminPage> {
     setState(() => busy = true);
     try {
       await widget.api.createMatch(
-          teamA.text, teamB.text, kickoff.text, deadline.text, stage.text);
+        teamA.text,
+        teamB.text,
+        _toUtcIso(newKickoffLocal),
+        _toUtcIso(newDeadlineLocal),
+        stage.text,
+      );
       teamA.clear();
       teamB.clear();
       if (mounted) {
@@ -2287,10 +2541,10 @@ class _AdminPageState extends State<AdminPage> {
         TextEditingController(text: match['team_b'].toString());
     final stageController =
         TextEditingController(text: match['stage'].toString());
-    final kickoffController =
-        TextEditingController(text: match['kickoff_at'].toString());
-    final deadlineController = TextEditingController(
-        text: (match['vote_deadline_at'] ?? match['kickoff_at']).toString());
+    DateTime kickoffLocal = DateTime.parse(match['kickoff_at']).toLocal();
+    DateTime deadlineLocal = DateTime.parse(
+      (match['vote_deadline_at'] ?? match['kickoff_at']).toString(),
+    ).toLocal();
     String status = match['status'].toString();
 
     final saved = await showDialog<bool>(
@@ -2299,10 +2553,11 @@ class _AdminPageState extends State<AdminPage> {
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('Edit match'),
           content: SizedBox(
-            width: 460,
+            width: 500,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
                       controller: teamAController,
@@ -2315,16 +2570,24 @@ class _AdminPageState extends State<AdminPage> {
                   TextField(
                       controller: stageController,
                       decoration: const InputDecoration(labelText: 'Stage')),
-                  const SizedBox(height: 10),
-                  TextField(
-                      controller: kickoffController,
-                      decoration:
-                          const InputDecoration(labelText: 'Kickoff ISO UTC')),
-                  const SizedBox(height: 10),
-                  TextField(
-                      controller: deadlineController,
-                      decoration: const InputDecoration(
-                          labelText: 'Voting deadline ISO UTC')),
+                  const SizedBox(height: 14),
+                  AdminDateTimePicker(
+                    label: 'Match start date & time',
+                    value: kickoffLocal,
+                    helperText:
+                        'This is what users will see on the match card.',
+                    onChanged: (value) =>
+                        setDialogState(() => kickoffLocal = value),
+                  ),
+                  const SizedBox(height: 12),
+                  AdminDateTimePicker(
+                    label: 'Voting deadline date & time',
+                    value: deadlineLocal,
+                    helperText:
+                        'Users can predict, unlock, and change picks until this time.',
+                    onChanged: (value) =>
+                        setDialogState(() => deadlineLocal = value),
+                  ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     value: status == 'finished' ? 'finished' : 'scheduled',
@@ -2360,8 +2623,8 @@ class _AdminPageState extends State<AdminPage> {
         match['id'] as int,
         teamAController.text,
         teamBController.text,
-        kickoffController.text,
-        deadlineController.text,
+        _toUtcIso(kickoffLocal),
+        _toUtcIso(deadlineLocal),
         stageController.text,
         status,
       );
@@ -2481,7 +2744,7 @@ class _AdminPageState extends State<AdminPage> {
           ),
           const SizedBox(height: 8),
           const Text(
-              'Manage matches, voting deadlines, users, passwords, and manual leaderboard points.',
+              'Manage matches, voting deadlines, users, passwords, and leaderboard points.',
               style: TextStyle(color: mutedNavy, fontWeight: FontWeight.w700)),
           const SizedBox(height: 18),
           GlassCard(
@@ -2491,6 +2754,12 @@ class _AdminPageState extends State<AdminPage> {
                 const Text('Add match',
                     style:
                         TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 8),
+                const Text(
+                  'Choose the date and local time exactly as you want users to see it. The app saves the correct UTC time automatically.',
+                  style:
+                      TextStyle(color: mutedNavy, fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 14),
                 Wrap(
                   spacing: 12,
@@ -2514,18 +2783,22 @@ class _AdminPageState extends State<AdminPage> {
                             controller: stage,
                             decoration:
                                 const InputDecoration(labelText: 'Stage'))),
-                    SizedBox(
-                        width: 320,
-                        child: TextField(
-                            controller: kickoff,
-                            decoration: const InputDecoration(
-                                labelText: 'Kickoff ISO UTC'))),
-                    SizedBox(
-                        width: 320,
-                        child: TextField(
-                            controller: deadline,
-                            decoration: const InputDecoration(
-                                labelText: 'Voting deadline ISO UTC'))),
+                    AdminDateTimePicker(
+                      label: 'Match start date & time',
+                      value: newKickoffLocal,
+                      helperText:
+                          'This time will be shown on the user match card.',
+                      onChanged: (value) =>
+                          setState(() => newKickoffLocal = value),
+                    ),
+                    AdminDateTimePicker(
+                      label: 'Voting deadline date & time',
+                      value: newDeadlineLocal,
+                      helperText:
+                          'Users can unlock/change their prediction until this time.',
+                      onChanged: (value) =>
+                          setState(() => newDeadlineLocal = value),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -2550,11 +2823,13 @@ class _AdminPageState extends State<AdminPage> {
           FutureBuilder<List<dynamic>>(
             future: matchesFuture,
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting)
+              if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
-              if (snapshot.hasError)
+              }
+              if (snapshot.hasError) {
                 return ErrorState(
                     message: snapshot.error.toString(), onRetry: refreshAll);
+              }
               final matches = snapshot.data ?? [];
               return GlassCard(
                 child: Column(
@@ -2587,11 +2862,13 @@ class _AdminPageState extends State<AdminPage> {
           FutureBuilder<List<dynamic>>(
             future: usersFuture,
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting)
+              if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
-              if (snapshot.hasError)
+              }
+              if (snapshot.hasError) {
                 return ErrorState(
                     message: snapshot.error.toString(), onRetry: refreshAll);
+              }
               final users = snapshot.data ?? [];
               return GlassCard(
                 child: Column(
@@ -2648,6 +2925,7 @@ class AdminMatchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final kickoff = DateTime.parse(match['kickoff_at']).toLocal();
     final deadline = DateTime.parse(
       (match['vote_deadline_at'] ?? match['kickoff_at']).toString(),
     ).toLocal();
@@ -2690,18 +2968,45 @@ class AdminMatchRow extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 2),
           Text(
-            '${match['stage']} • Kickoff: ${formatKickoff(DateTime.parse(match['kickoff_at']).toLocal())}',
-            style: const TextStyle(color: mutedNavy),
+            '${match['stage']}',
+            style:
+                const TextStyle(color: mutedNavy, fontWeight: FontWeight.w700),
           ),
-          Text(
-            'Voting deadline: ${formatKickoff(deadline)}',
-            style: const TextStyle(
-              color: mutedNavy,
-              fontWeight: FontWeight.w700,
-            ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              const Icon(Icons.event, size: 17, color: primaryBlue),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Match starts: ${formatKickoff(kickoff)}',
+                  style: const TextStyle(
+                    color: brandNavy,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 4),
+          Row(
+            children: [
+              const Icon(Icons.lock_clock, size: 17, color: warningOrange),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Voting deadline: ${formatKickoff(deadline)}',
+                  style: const TextStyle(
+                    color: mutedNavy,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           Text(
             'Predictions: $totalPredictions • Result: ${finalResult == null ? 'Not set' : predictionLabel(match, finalResult.toString())}',
             style: const TextStyle(
@@ -3100,6 +3405,25 @@ String predictionLabel(Map<String, dynamic> match, String value) {
   return 'Draw';
 }
 
+String formatDateOnly(DateTime dt) {
+  const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec'
+  ];
+  return '${weekdays[dt.weekday - 1]}, ${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+}
+
 String formatKickoff(DateTime dt) {
   final hour12 = dt.hour == 0
       ? 12
@@ -3108,7 +3432,7 @@ String formatKickoff(DateTime dt) {
           : dt.hour;
   final minute = dt.minute.toString().padLeft(2, '0');
   final ampm = dt.hour >= 12 ? 'PM' : 'AM';
-  return '${dt.month}/${dt.day}/${dt.year} • $hour12:$minute $ampm';
+  return '${formatDateOnly(dt)} • $hour12:$minute $ampm';
 }
 
 void showSnack(BuildContext context, String message, {bool isError = false}) {

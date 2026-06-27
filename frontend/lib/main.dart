@@ -1544,21 +1544,11 @@ class HubPage extends StatefulWidget {
 
 class _HubPageState extends State<HubPage> {
   late Future<List<dynamic>> future;
-  Timer? refreshTimer;
 
   @override
   void initState() {
     super.initState();
     future = widget.api.matches();
-    refreshTimer = Timer.periodic(const Duration(seconds: 20), (_) {
-      if (mounted) refresh();
-    });
-  }
-
-  @override
-  void dispose() {
-    refreshTimer?.cancel();
-    super.dispose();
   }
 
   void refresh() => setState(() => future = widget.api.matches());

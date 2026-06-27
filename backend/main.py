@@ -761,6 +761,94 @@ class Handler(BaseHTTPRequestHandler):
                 db.commit()
             return {"ok": True}
 
+        if method == "GET" and path.startswith("/admin/matches/") and path.endswith("/predictions"):
+            require_admin(self.headers)
+            parts = path.split("/")
+            try:
+                match_id = int(parts[3])
+            except Exception:
+                raise ApiError(400, "Invalid match_id")
+
+            def label_for(match_row, value: str | None) -> str:
+                value = str(value or "").upper()
+                if value == "A":
+                    return f"{match_row['team_a']} Win"
+                if value == "B":
+                    return f"{match_row['team_b']} Win"
+                if value == "DRAW":
+                    return "Draw"
+                return "Not set"
+
+            with get_db() as db:
+                match = db.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
+                if not match:
+                    raise ApiError(404, "Match not found")
+
+                rows = db.execute(
+                    """
+                    SELECT
+                        p.id,
+                        p.user_id,
+                        u.full_name,
+                        u.normalized_name,
+                        p.prediction,
+                        p.points,
+                        p.created_at
+                    FROM predictions p
+                    JOIN users u ON u.id = p.user_id
+                    WHERE p.match_id = ?
+                    ORDER BY u.full_name ASC
+                    """,
+                    (match_id,),
+                ).fetchall()
+
+                final_result = match["final_result"]
+                total = len(rows)
+                correct = 0
+                wrong = 0
+                output_rows = []
+
+                for row in rows:
+                    is_correct = None
+                    if final_result:
+                        is_correct = row["prediction"] == final_result
+                        if is_correct:
+                            correct += 1
+                        else:
+                            wrong += 1
+
+                    output_rows.append(
+                        {
+                            "prediction_id": row["id"],
+                            "user_id": row["user_id"],
+                            "full_name": row["full_name"],
+                            "username": row["normalized_name"],
+                            "prediction": row["prediction"],
+                            "prediction_label": label_for(match, row["prediction"]),
+                            "points": row["points"],
+                            "submitted_at": row["created_at"],
+                            "is_correct": is_correct,
+                        }
+                    )
+
+                return {
+                    "match": {
+                        "id": match["id"],
+                        "team_a": match["team_a"],
+                        "team_b": match["team_b"],
+                        "stage": match["stage"],
+                        "kickoff_at": match["kickoff_at"],
+                        "vote_deadline_at": match["vote_deadline_at"] or match["kickoff_at"],
+                        "status": match["status"],
+                        "final_result": final_result,
+                        "final_result_label": label_for(match, final_result) if final_result else "Not set",
+                    },
+                    "total_predictions": total,
+                    "correct_predictions": correct,
+                    "wrong_predictions": wrong,
+                    "rows": output_rows,
+                }
+
         if method == "GET" and path == "/admin/users":
             require_admin(self.headers)
             with get_db() as db:

@@ -900,25 +900,14 @@ class AppScreenBackground extends StatelessWidget {
             Positioned.fill(
               child: Image.asset(
                 appDarkBgAsset,
-                fit: BoxFit.cover,
-                alignment: imageAlignment,
+                fit: BoxFit.fill,
+                alignment: Alignment.center,
                 filterQuality: FilterQuality.high,
               ),
             ),
           Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(.08 + veilOpacity),
-                    Colors.black.withOpacity(.24 + veilOpacity),
-                    Colors.black.withOpacity(.42 + veilOpacity),
-                  ],
-                  stops: const [0.0, .56, 1.0],
-                ),
-              ),
+            child: Container(
+              color: Colors.black.withOpacity(.10),
             ),
           ),
           child,
@@ -1012,7 +1001,7 @@ class _AuthScreenState extends State<AuthScreen> {
         children: [
           Image.asset(
             loginDarkBgAsset,
-            fit: BoxFit.cover,
+            fit: BoxFit.fill,
             alignment: Alignment.center,
             filterQuality: FilterQuality.high,
           ),

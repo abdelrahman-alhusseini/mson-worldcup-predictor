@@ -11,17 +11,19 @@ const displayGold = Color(0xFFD7A63A);
 const displayGoldSoft = Color(0xFFF0D48A);
 const displayDeepNavy = Color(0xFF07182E);
 const displayPanelNavy = Color(0xFF0A1E38);
-const primaryBlue = Color(0xFF0B4FA3);
-const deepBlue = Color(0xFF0B2545);
-const darkerBlue = Color(0xFFF7FAFF);
-const lightBlue = Color(0xFFEAF3FF);
-const brandNavy = Color(0xFF102A4C);
-const mutedNavy = Color(0xFF5F6F86);
-const borderBlue = Color(0x33235AA6);
-const cardBorder = Color(0x33235AA6);
+const primaryBlue = displayGold;
+const deepBlue = displayDeepNavy;
+const darkerBlue = displayDeepNavy;
+const lightBlue = Color(0x332D8CFF);
+const brandNavy = Color(0xFFF8FAFF);
+const mutedNavy = Color(0xFFD4DBE8);
+const borderBlue = Color(0x66D7A63A);
+const cardBorder = Color(0x66D7A63A);
 const winGreen = Color(0xFF18A66A);
 const warningOrange = Color(0xFFC47A00);
 const appWallpaperAsset = 'assets/app_wallpaper.png';
+const appDarkBgAsset = 'assets/app_dark_bg.png';
+const loginDarkBgAsset = 'assets/login_dark_bg.png';
 const appWallpaperWideAsset = 'assets/app_wallpaper_wide.png';
 const displayFlyerAsset = 'assets/display_flyer_bg.png';
 
@@ -143,53 +145,102 @@ class _MsonCupAppState extends State<MsonCupApp> {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-            seedColor: primaryBlue, brightness: Brightness.light),
-        scaffoldBackgroundColor: darkerBlue,
+          seedColor: displayGold,
+          brightness: Brightness.dark,
+        ),
+        scaffoldBackgroundColor: displayDeepNavy,
         fontFamily: 'Arial',
-        textTheme: ThemeData.light().textTheme.apply(
+        textTheme: ThemeData.dark().textTheme.apply(
               bodyColor: brandNavy,
               displayColor: brandNavy,
             ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: brandNavy,
+        appBarTheme: AppBarTheme(
+          backgroundColor: displayDeepNavy.withOpacity(.92),
+          foregroundColor: Colors.white,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
         ),
+        dialogTheme: DialogThemeData(
+          backgroundColor: displayPanelNavy,
+          surfaceTintColor: Colors.transparent,
+          titleTextStyle: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+          ),
+          contentTextStyle: TextStyle(
+            color: Colors.white.withOpacity(.82),
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: BorderSide(color: displayGold.withOpacity(.38)),
+          ),
+        ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
-            backgroundColor: primaryBlue,
-            foregroundColor: Colors.white,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            backgroundColor: displayGold,
+            foregroundColor: displayDeepNavy,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            textStyle: const TextStyle(fontWeight: FontWeight.w900),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: displayGoldSoft,
+            side: BorderSide(color: displayGold.withOpacity(.58)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: displayGoldSoft,
+            textStyle: const TextStyle(fontWeight: FontWeight.w800),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: Colors.white.withOpacity(.86),
-          labelStyle:
-              const TextStyle(color: mutedNavy, fontWeight: FontWeight.w700),
-          hintStyle: const TextStyle(color: mutedNavy),
+          fillColor: displayPanelNavy.withOpacity(.78),
+          labelStyle: TextStyle(
+            color: Colors.white.withOpacity(.76),
+            fontWeight: FontWeight.w800,
+          ),
+          hintStyle: TextStyle(color: Colors.white.withOpacity(.45)),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: borderBlue),
+            borderSide: BorderSide(color: displayGold.withOpacity(.32)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: borderBlue),
+            borderSide: BorderSide(color: displayGold.withOpacity(.32)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: primaryBlue, width: 1.4),
+            borderSide: const BorderSide(color: displayGold, width: 1.5),
           ),
         ),
         navigationBarTheme: NavigationBarThemeData(
-          backgroundColor: Colors.white.withOpacity(.94),
-          indicatorColor: lightBlue,
-          labelTextStyle: WidgetStateProperty.all(
-              const TextStyle(color: brandNavy, fontWeight: FontWeight.w700)),
-          iconTheme:
-              WidgetStateProperty.all(const IconThemeData(color: primaryBlue)),
+          backgroundColor: Colors.transparent,
+          indicatorColor: displayGold,
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            final selected = states.contains(WidgetState.selected);
+            return TextStyle(
+              color: selected ? displayDeepNavy : Colors.white.withOpacity(.82),
+              fontWeight: FontWeight.w900,
+              fontSize: 12,
+            );
+          }),
+          iconTheme: WidgetStateProperty.resolveWith((states) {
+            final selected = states.contains(WidgetState.selected);
+            return IconThemeData(
+              color: selected ? displayDeepNavy : displayGoldSoft,
+            );
+          }),
         ),
       ),
       home: isDisplayRoute
@@ -829,13 +880,11 @@ class AppScreenBackground extends StatelessWidget {
     super.key,
     required this.child,
     this.veilOpacity = 0,
-    this.imageAlignment = Alignment.topCenter,
+    this.imageAlignment = Alignment.center,
     this.showWallpaper = true,
   });
 
   final Widget child;
-
-  // Kept only so older calls still compile. No global overlay is applied.
   final double veilOpacity;
   final Alignment imageAlignment;
   final bool showWallpaper;
@@ -843,32 +892,35 @@ class AppScreenBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFF7FAFF),
+      color: displayDeepNavy,
       child: Stack(
         fit: StackFit.expand,
         children: [
           if (showWallpaper)
             Positioned.fill(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final screenRatio =
-                      constraints.maxWidth / constraints.maxHeight;
-                  final useWideAsset = screenRatio > 2.08;
-                  final asset =
-                      useWideAsset ? appWallpaperWideAsset : appWallpaperAsset;
-
-                  return Image.asset(
-                    asset,
-                    width: constraints.maxWidth,
-                    height: constraints.maxHeight,
-                    fit: BoxFit.cover,
-                    alignment:
-                        useWideAsset ? Alignment.topLeft : Alignment.topCenter,
-                    filterQuality: FilterQuality.high,
-                  );
-                },
+              child: Image.asset(
+                appDarkBgAsset,
+                fit: BoxFit.cover,
+                alignment: imageAlignment,
+                filterQuality: FilterQuality.high,
               ),
             ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(.08 + veilOpacity),
+                    Colors.black.withOpacity(.24 + veilOpacity),
+                    Colors.black.withOpacity(.42 + veilOpacity),
+                  ],
+                  stops: const [0.0, .56, 1.0],
+                ),
+              ),
+            ),
+          ),
           child,
         ],
       ),
@@ -881,7 +933,7 @@ class PageLane extends StatelessWidget {
     super.key,
     required this.child,
     this.maxContentWidth = 720,
-    this.topPadding = 165,
+    this.topPadding = 125,
   });
 
   final Widget child;
@@ -893,43 +945,19 @@ class PageLane extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
-        double left;
-        double right;
-
-        // Stronger safe lane for this specific wallpaper.
-        // The background has a huge Michael & Son logo on the left and FIFA/ball art on the right,
-        // so content must sit lower and inside the clean middle area.
-        if (w >= 1750) {
-          left = 560;
-          right = 520;
-        } else if (w >= 1450) {
-          left = 500;
-          right = 380;
-        } else if (w >= 1180) {
-          left = 360;
-          right = 260;
-        } else {
-          left = 22;
-          right = 22;
-        }
-
-        double available = w - left - right;
-        if (available < 540) {
-          left = 22;
-          right = 22;
-          available = w - 44;
-        }
-
-        final contentWidth =
-            available < maxContentWidth ? available : maxContentWidth;
+        final horizontal = w >= 1400
+            ? 72.0
+            : w >= 900
+                ? 36.0
+                : 18.0;
 
         return ListView(
-          padding: EdgeInsets.fromLTRB(left, topPadding, right, 104),
+          padding: EdgeInsets.fromLTRB(horizontal, topPadding, horizontal, 110),
           children: [
             Align(
-              alignment: Alignment.topLeft,
-              child: SizedBox(
-                width: contentWidth,
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxContentWidth),
                 child: child,
               ),
             ),
@@ -978,65 +1006,56 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: AppScreenBackground(
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth >= 980;
-
-              if (!isWide) {
-                return Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(22),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const LoginIntroText(compact: true),
-                        const SizedBox(height: 20),
-                        AuthCard(
-                          isLogin: isLogin,
-                          busy: busy,
-                          error: error,
-                          nameController: nameController,
-                          passwordController: passwordController,
-                          onModeChanged: (value) =>
-                              setState(() => isLogin = value),
-                          onSubmit: submit,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-
-              return Stack(
-                children: [
-                  const Positioned(
-                    left: 420,
-                    top: 220,
-                    width: 360,
-                    child: LoginIntroText(),
-                  ),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 420),
-                      child: AuthCard(
-                        isLogin: isLogin,
-                        busy: busy,
-                        error: error,
-                        nameController: nameController,
-                        passwordController: passwordController,
-                        onModeChanged: (value) =>
-                            setState(() => isLogin = value),
-                        onSubmit: submit,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
+      backgroundColor: displayDeepNavy,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            loginDarkBgAsset,
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
+            filterQuality: FilterQuality.high,
           ),
-        ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(.05),
+                    Colors.black.withOpacity(.18),
+                    Colors.black.withOpacity(.40),
+                  ],
+                  stops: const [0.0, .55, 1.0],
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 22, vertical: 26),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 440),
+                  child: AuthCard(
+                    isLogin: isLogin,
+                    busy: busy,
+                    error: error,
+                    nameController: nameController,
+                    passwordController: passwordController,
+                    onModeChanged: (value) => setState(() {
+                      isLogin = value;
+                      error = null;
+                    }),
+                    onSubmit: submit,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1107,16 +1126,20 @@ class AuthCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(26),
+      padding: const EdgeInsets.fromLTRB(28, 28, 28, 26),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(.92),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: const Color(0xFFD7E3F2)),
+        color: displayDeepNavy.withOpacity(.88),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: displayGold.withOpacity(.88), width: 1.6),
         boxShadow: [
           BoxShadow(
-            color: brandNavy.withOpacity(.12),
+            color: Colors.black.withOpacity(.46),
+            blurRadius: 42,
+            offset: const Offset(0, 22),
+          ),
+          BoxShadow(
+            color: displayGold.withOpacity(.13),
             blurRadius: 34,
-            offset: const Offset(0, 18),
           ),
         ],
       ),
@@ -1124,36 +1147,88 @@ class AuthCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
+          const Icon(Icons.emoji_events, color: displayGold, size: 54),
+          const SizedBox(height: 12),
           const Text(
-            'Michael & Son Services',
+            'MICHAEL & SON',
+            textAlign: TextAlign.center,
             style: TextStyle(
-                fontSize: 17, fontWeight: FontWeight.w900, color: mutedNavy),
+              color: displayGoldSoft,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              letterSpacing: .8,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'WORLD CUP PREDICTOR',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(.24),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withOpacity(.10)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _AuthModeButton(
+                    label: 'Login',
+                    active: isLogin,
+                    onTap: () => onModeChanged(true),
+                  ),
+                ),
+                Expanded(
+                  child: _AuthModeButton(
+                    label: 'Create account',
+                    active: !isLogin,
+                    onTap: () => onModeChanged(false),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            isLogin ? 'Welcome Back' : 'Create Your Account',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 25,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Predict. Compete. Win.',
+          Text(
+            isLogin
+                ? 'Sign in to continue your predictions'
+                : 'Join the competition and start predicting',
+            textAlign: TextAlign.center,
             style: TextStyle(
-                color: mutedNavy, fontSize: 15, fontWeight: FontWeight.w800),
+              color: Colors.white.withOpacity(.72),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          const SizedBox(height: 26),
-          SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(
-                  value: true,
-                  icon: Icon(Icons.check, size: 18),
-                  label: Text('Login')),
-              ButtonSegment(value: false, label: Text('Create account')),
-            ],
-            selected: {isLogin},
-            onSelectionChanged: (value) => onModeChanged(value.first),
-          ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           TextField(
             controller: nameController,
             textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(
-              labelText: 'Full name',
-              hintText: 'First name and last name',
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.w800),
+            decoration: _darkInputDecoration(
+              label: 'Full name',
+              hint: 'First name and last name',
+              icon: Icons.person_outline,
             ),
           ),
           const SizedBox(height: 14),
@@ -1161,37 +1236,156 @@ class AuthCard extends StatelessWidget {
             controller: passwordController,
             obscureText: true,
             onSubmitted: (_) => onSubmit(),
-            decoration: const InputDecoration(labelText: 'Password'),
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.w800),
+            decoration: _darkInputDecoration(
+              label: 'Password',
+              hint: 'Enter your password',
+              icon: Icons.lock_outline,
+            ),
           ),
           if (error != null) ...[
-            const SizedBox(height: 12),
-            Text(error!,
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFE1E1).withOpacity(.12),
+                borderRadius: BorderRadius.circular(14),
+                border:
+                    Border.all(color: const Color(0xFFFF8A8A).withOpacity(.40)),
+              ),
+              child: Text(
+                error!,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
-                    color: Color(0xFFB00020), fontWeight: FontWeight.w700)),
-          ],
-          const SizedBox(height: 22),
-          FilledButton(
-            onPressed: busy ? null : onSubmit,
-            style: FilledButton.styleFrom(
-              backgroundColor: primaryBlue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 17),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+                  color: Color(0xFFFFB3B3),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
+              ),
             ),
-            child: busy
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
-                : Text(isLogin ? 'Login' : 'Create account',
-                    style: const TextStyle(fontWeight: FontWeight.w900)),
+          ],
+          const SizedBox(height: 24),
+          SizedBox(
+            height: 54,
+            child: FilledButton(
+              onPressed: busy ? null : onSubmit,
+              style: FilledButton.styleFrom(
+                backgroundColor: displayGold,
+                foregroundColor: displayDeepNavy,
+                disabledBackgroundColor: displayGold.withOpacity(.45),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+                elevation: 0,
+              ),
+              child: busy
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        color: displayDeepNavy,
+                      ),
+                    )
+                  : Text(
+                      isLogin ? 'LOG IN' : 'CREATE ACCOUNT',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: .8,
+                        fontSize: 14,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Predict. Compete. Win.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: displayGoldSoft.withOpacity(.86),
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              letterSpacing: .4,
+            ),
           ),
         ],
       ),
     );
   }
+}
+
+class _AuthModeButton extends StatelessWidget {
+  const _AuthModeButton({
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      decoration: BoxDecoration(
+        color: active ? displayGold : Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: active ? displayDeepNavy : Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+InputDecoration _darkInputDecoration({
+  required String label,
+  required String hint,
+  required IconData icon,
+}) {
+  return InputDecoration(
+    labelText: label,
+    hintText: hint,
+    prefixIcon: Icon(icon, color: displayGoldSoft),
+    labelStyle: TextStyle(
+      color: Colors.white.withOpacity(.70),
+      fontWeight: FontWeight.w800,
+    ),
+    hintStyle: TextStyle(
+      color: Colors.white.withOpacity(.42),
+      fontWeight: FontWeight.w600,
+    ),
+    filled: true,
+    fillColor: Colors.black.withOpacity(.20),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: BorderSide(color: Colors.white.withOpacity(.16)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: BorderSide(color: Colors.white.withOpacity(.16)),
+    ),
+    focusedBorder: const OutlineInputBorder(
+      borderRadius: BorderRadius.all(Radius.circular(16)),
+      borderSide: BorderSide(color: displayGold, width: 1.5),
+    ),
+  );
 }
 
 class AppShell extends StatefulWidget {
@@ -1214,6 +1408,16 @@ class _AppShellState extends State<AppShell> {
 
   bool get isAdmin => widget.user['role'] == 'admin';
 
+  String get initials {
+    final parts =
+        widget.user['full_name'].toString().trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty) return 'U';
+    final first = parts.first.isNotEmpty ? parts.first[0] : '';
+    final second =
+        parts.length > 1 && parts.last.isNotEmpty ? parts.last[0] : '';
+    return (first + second).toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
@@ -1235,36 +1439,107 @@ class _AppShellState extends State<AppShell> {
     ];
 
     return Scaffold(
+      extendBody: true,
+      backgroundColor: displayDeepNavy,
       appBar: AppBar(
-        title: const Text('Michael & Son Cup',
-            style: TextStyle(fontWeight: FontWeight.w900)),
-        backgroundColor: Colors.white,
-        foregroundColor: brandNavy,
+        titleSpacing: 14,
+        title: Row(
+          children: [
+            const Icon(Icons.emoji_events, color: displayGold, size: 26),
+            const SizedBox(width: 10),
+            const Flexible(
+              child: Text(
+                'MICHAEL & SON CUP',
+                overflow: TextOverflow.ellipsis,
+                style:
+                    TextStyle(fontWeight: FontWeight.w900, letterSpacing: .5),
+              ),
+            ),
+            if (isAdmin) ...[
+              const SizedBox(width: 10),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: displayGold,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: const Text(
+                  'ADMIN',
+                  style: TextStyle(
+                    color: displayDeepNavy,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        backgroundColor: displayDeepNavy.withOpacity(.90),
+        foregroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
+        elevation: 0,
         actions: [
-          Center(
-              child: Text(widget.user['full_name'],
-                  style: const TextStyle(
-                      color: mutedNavy, fontWeight: FontWeight.w700))),
-          const SizedBox(width: 12),
+          Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            margin: const EdgeInsets.only(right: 10),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(.24),
+              shape: BoxShape.circle,
+              border: Border.all(color: displayGold.withOpacity(.55)),
+            ),
+            child: Text(
+              initials,
+              style: const TextStyle(
+                color: displayGoldSoft,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
           TextButton.icon(
             onPressed: widget.onLogout,
-            icon: const Icon(Icons.logout),
-            label: const Text('Logout'),
+            icon: const Icon(Icons.logout, color: displayGold),
+            label: const Text(
+              'Logout',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+            ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
         ],
       ),
       body: AppScreenBackground(
-        imageAlignment: Alignment.topCenter,
+        imageAlignment: Alignment.center,
         child: pages[index],
       ),
-      bottomNavigationBar: NavigationBar(
-        height: 76,
-        backgroundColor: Colors.white,
-        selectedIndex: index,
-        onDestinationSelected: (value) => setState(() => index = value),
-        destinations: destinations,
+      bottomNavigationBar: Container(
+        margin: const EdgeInsets.fromLTRB(18, 0, 18, 16),
+        decoration: BoxDecoration(
+          color: displayDeepNavy.withOpacity(.90),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: displayGold.withOpacity(.34)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(.35),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: NavigationBar(
+            height: 72,
+            backgroundColor: Colors.transparent,
+            indicatorColor: displayGold.withOpacity(.95),
+            selectedIndex: index,
+            onDestinationSelected: (value) => setState(() => index = value),
+            destinations: destinations,
+          ),
+        ),
       ),
     );
   }
@@ -1763,9 +2038,10 @@ class PredictionPicker extends StatelessWidget {
                   onPressed: () => onChanged(value),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: active ? primaryBlue : borderBlue),
-                    backgroundColor:
-                        active ? primaryBlue : Colors.white.withOpacity(.92),
-                    foregroundColor: active ? Colors.white : brandNavy,
+                    backgroundColor: active
+                        ? displayGold
+                        : displayPanelNavy.withOpacity(.72),
+                    foregroundColor: active ? displayDeepNavy : Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 11),
                   ),
                   child: Text(
@@ -1965,7 +2241,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                     scrollDirection: Axis.horizontal,
                     child: DataTable(
                       headingRowColor:
-                          WidgetStateProperty.all(const Color(0xFFF2F6FC)),
+                          WidgetStateProperty.all(displayGold.withOpacity(.18)),
                       columns: const [
                         DataColumn(label: Text('#')),
                         DataColumn(label: Text('Name')),
@@ -2272,9 +2548,9 @@ class AdminDateTimePicker extends StatelessWidget {
       width: 460,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7FAFF),
+        color: displayPanelNavy.withOpacity(.78),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD9E5F4)),
+        border: Border.all(color: displayGold.withOpacity(.28)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3051,9 +3327,9 @@ class AdminMatchRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7FAFF),
+        color: displayPanelNavy.withOpacity(.78),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD9E5F4)),
+        border: Border.all(color: displayGold.withOpacity(.28)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3185,9 +3461,9 @@ class PredictionReviewRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7FAFF),
+        color: displayPanelNavy.withOpacity(.78),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD9E5F4)),
+        border: Border.all(color: displayGold.withOpacity(.28)),
       ),
       child: Row(
         children: [
@@ -3268,9 +3544,9 @@ class AdminUserRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-          color: const Color(0xFFF7FAFF),
+          color: displayPanelNavy.withOpacity(.78),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFD9E5F4))),
+          border: Border.all(color: displayGold.withOpacity(.28))),
       child: Row(
         children: [
           Expanded(
@@ -3321,7 +3597,7 @@ class FriendlyErrorBox extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFFD9E5F4)),
+          border: Border.all(color: displayGold.withOpacity(.28)),
           boxShadow: [
             BoxShadow(
                 color: Colors.black.withOpacity(.10),
@@ -3404,14 +3680,18 @@ class GlassCard extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(.94),
+        color: displayPanelNavy.withOpacity(.86),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFD9E5F4)),
+        border: Border.all(color: displayGold.withOpacity(.34)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0B2545).withOpacity(.08),
+            color: Colors.black.withOpacity(.28),
+            blurRadius: 28,
+            offset: const Offset(0, 16),
+          ),
+          BoxShadow(
+            color: displayGold.withOpacity(.05),
             blurRadius: 24,
-            offset: const Offset(0, 12),
           ),
         ],
       ),

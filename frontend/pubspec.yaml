@@ -20,3 +20,5 @@ flutter:
     - assets/app_wallpaper.png
     - assets/app_wallpaper_wide.png
     - assets/display_gold_bg.png
+    - assets/app_dark_bg.png
+    - assets/login_dark_bg.png

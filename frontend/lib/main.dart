@@ -53,11 +53,20 @@ String get displayQrUrl {
 }
 
 bool get isDisplayRoute {
-  final path = Uri.base.path.toLowerCase();
-  final fragment = Uri.base.fragment.toLowerCase();
+  final uri = Uri.base;
+
+  final path = uri.path.toLowerCase();
+  final fragment = uri.fragment.toLowerCase();
+
+  final query = uri.queryParameters.map(
+    (key, value) => MapEntry(key.toLowerCase(), value.toLowerCase()),
+  );
+
   return path.endsWith('/display') ||
       fragment == '/display' ||
-      fragment.startsWith('/display?');
+      fragment.startsWith('/display?') ||
+      query['display'] == '1' ||
+      query['screen'] == 'display';
 }
 
 void main() {

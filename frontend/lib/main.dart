@@ -6,6 +6,11 @@ import 'package:http/http.dart' as http;
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+const displayGoldBgAsset = 'assets/display_gold_bg.png';
+const displayGold = Color(0xFFD7A63A);
+const displayGoldSoft = Color(0xFFF0D48A);
+const displayDeepNavy = Color(0xFF07182E);
+const displayPanelNavy = Color(0xFF0A1E38);
 const primaryBlue = Color(0xFF0B4FA3);
 const deepBlue = Color(0xFF0B2545);
 const darkerBlue = Color(0xFFF7FAFF);
@@ -434,16 +439,16 @@ class _DisplayScreenState extends State<DisplayScreen> {
     if (updated == null) return 'Updating live';
     final hh = updated.hour.toString().padLeft(2, '0');
     final mm = updated.minute.toString().padLeft(2, '0');
-    return 'Last updated $hh:$mm';
+    return 'Last updated: $hh:$mm';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF061B34),
+      backgroundColor: displayDeepNavy,
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final compact = constraints.maxWidth < 920;
+          final compact = constraints.maxWidth < 1100;
 
           final leaderboard = DisplayLeaderboardBlock(
             future: future,
@@ -457,7 +462,7 @@ class _DisplayScreenState extends State<DisplayScreen> {
             return Stack(
               fit: StackFit.expand,
               children: [
-                const DisplayFlyerBackground(),
+                const DisplayGoldBackground(),
                 SafeArea(
                   child: Align(
                     alignment: Alignment.bottomCenter,
@@ -467,9 +472,9 @@ class _DisplayScreenState extends State<DisplayScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            qr,
-                            const SizedBox(height: 14),
                             leaderboard,
+                            const SizedBox(height: 16),
+                            qr,
                           ],
                         ),
                       ),
@@ -483,15 +488,15 @@ class _DisplayScreenState extends State<DisplayScreen> {
           final w = constraints.maxWidth;
           final h = constraints.maxHeight;
 
-          final leaderboardWidth = (w * .34).clamp(430.0, 560.0).toDouble();
-          final qrWidth = (w * .25).clamp(330.0, 430.0).toDouble();
-          final sidePadding = (w * .032).clamp(34.0, 64.0).toDouble();
-          final bottomPadding = (h * .045).clamp(30.0, 58.0).toDouble();
+          final leaderboardWidth = (w * .36).clamp(470.0, 600.0).toDouble();
+          final qrWidth = (w * .20).clamp(260.0, 320.0).toDouble();
+          final sidePadding = (w * .045).clamp(40.0, 72.0).toDouble();
+          final bottomPadding = (h * .06).clamp(28.0, 56.0).toDouble();
 
           return Stack(
             fit: StackFit.expand,
             children: [
-              const DisplayFlyerBackground(),
+              const DisplayGoldBackground(),
               Positioned(
                 left: sidePadding,
                 bottom: bottomPadding,
@@ -512,45 +517,37 @@ class _DisplayScreenState extends State<DisplayScreen> {
   }
 }
 
-class DisplayFlyerBackground extends StatelessWidget {
-  const DisplayFlyerBackground({super.key});
+class DisplayGoldBackground extends StatelessWidget {
+  const DisplayGoldBackground({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFF061B34),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Align(
-            alignment: Alignment.topCenter,
-            child: Image.asset(
-              displayFlyerAsset,
-              width: MediaQuery.of(context).size.width,
-              fit: BoxFit.fitWidth,
-              alignment: Alignment.topCenter,
-              filterQuality: FilterQuality.high,
-            ),
-          ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.transparent,
-                    const Color(0xFF061B34).withOpacity(.28),
-                    const Color(0xFF061B34).withOpacity(.94),
-                  ],
-                  stops: const [.0, .48, .73, 1],
-                ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset(
+          displayGoldBgAsset,
+          fit: BoxFit.cover,
+          alignment: Alignment.center,
+          filterQuality: FilterQuality.high,
+        ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withOpacity(.06),
+                  Colors.transparent,
+                  Colors.black.withOpacity(.14),
+                ],
+                stops: const [0.0, .58, 1.0],
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -561,23 +558,23 @@ class DisplayQrBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(.95),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withOpacity(.72), width: 1.5),
+        color: Colors.white.withOpacity(.96),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: displayGold, width: 2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(.30),
-            blurRadius: 32,
-            offset: const Offset(0, 18),
+            color: Colors.black.withOpacity(.28),
+            blurRadius: 26,
+            offset: const Offset(0, 14),
           ),
         ],
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final qrSize =
-              (constraints.maxWidth - 44).clamp(210.0, 315.0).toDouble();
+              (constraints.maxWidth - 40).clamp(180.0, 245.0).toDouble();
 
           return Column(
             mainAxisSize: MainAxisSize.min,
@@ -586,19 +583,22 @@ class DisplayQrBlock extends StatelessWidget {
                 'SCAN TO JOIN',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: brandNavy,
-                  fontSize: 22,
+                  color: displayDeepNavy,
+                  fontSize: 18,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: .7,
+                  letterSpacing: .3,
                 ),
               ),
               const SizedBox(height: 14),
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: Color(0xFFDDE8F6), width: 2),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: const Color(0xFFD9DDE4),
+                    width: 1.5,
+                  ),
                 ),
                 child: QrImageView(
                   data: displayQrUrl,
@@ -607,34 +607,23 @@ class DisplayQrBlock extends StatelessWidget {
                   backgroundColor: Colors.white,
                   eyeStyle: const QrEyeStyle(
                     eyeShape: QrEyeShape.square,
-                    color: brandNavy,
+                    color: Colors.black,
                   ),
                   dataModuleStyle: const QrDataModuleStyle(
                     dataModuleShape: QrDataModuleShape.square,
-                    color: brandNavy,
+                    color: Colors.black,
                   ),
                 ),
               ),
               const SizedBox(height: 14),
               const Text(
-                'Create your account and start predicting',
+                'Create your account\nand start predicting!',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: brandNavy,
-                  fontWeight: FontWeight.w900,
+                  color: displayDeepNavy,
                   fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                displayQrUrl,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: mutedNavy,
+                  height: 1.3,
                   fontWeight: FontWeight.w800,
-                  fontSize: 12,
                 ),
               ),
             ],
@@ -660,16 +649,16 @@ class DisplayLeaderboardBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(.94),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withOpacity(.70), width: 1.5),
+        color: displayPanelNavy.withOpacity(.88),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: displayGold, width: 2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(.30),
-            blurRadius: 32,
-            offset: const Offset(0, 18),
+            blurRadius: 28,
+            offset: const Offset(0, 16),
           ),
         ],
       ),
@@ -679,46 +668,48 @@ class DisplayLeaderboardBlock extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'TOP 10 LEADERBOARD',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: brandNavy,
-                        letterSpacing: -.2,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      updatedText,
-                      style: const TextStyle(
-                        color: mutedNavy,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+              const Expanded(
+                child: Text(
+                  'TOP 10 LEADERBOARD',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: .2,
+                  ),
                 ),
               ),
               IconButton(
                 onPressed: onRefresh,
-                icon: const Icon(Icons.refresh, color: primaryBlue),
-                tooltip: 'Refresh leaderboard',
+                icon: const Icon(Icons.refresh, color: displayGold, size: 22),
+                splashRadius: 20,
+                tooltip: 'Refresh',
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.only(left: 2, bottom: 10),
+            child: Text(
+              updatedText,
+              style: TextStyle(
+                color: Colors.white.withOpacity(.85),
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Container(
+            height: 1,
+            margin: const EdgeInsets.only(bottom: 10),
+            color: displayGold.withOpacity(.22),
+          ),
           FutureBuilder<List<dynamic>>(
             future: future,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting &&
                   !snapshot.hasData) {
                 return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 34),
+                  padding: EdgeInsets.symmetric(vertical: 28),
                   child: Center(child: CircularProgressIndicator()),
                 );
               }
@@ -733,14 +724,14 @@ class DisplayLeaderboardBlock extends StatelessWidget {
               final rows = (snapshot.data ?? []).cast<Map<String, dynamic>>();
 
               if (rows.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
                   child: Center(
                     child: Text(
                       'No scores yet',
                       style: TextStyle(
-                        color: mutedNavy,
-                        fontWeight: FontWeight.w800,
+                        color: Colors.white.withOpacity(.85),
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
@@ -769,30 +760,30 @@ class DisplayLeaderboardRow extends StatelessWidget {
     final points = row['points'] ?? 0;
     final name = row['full_name']?.toString() ?? 'Player';
 
-    final medal = rank == 1
+    final leading = rank == 1
         ? '🥇'
         : rank == 2
             ? '🥈'
             : rank == 3
                 ? '🥉'
-                : '#$rank';
+                : '$rank';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: rank == 1 ? const Color(0xFFFFF4D6) : const Color(0xFFF7FAFF),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: const Color(0xFFDDE8F6)),
+        color: rank == 1 ? displayGold.withOpacity(.18) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
           SizedBox(
-            width: 48,
+            width: 36,
             child: Text(
-              medal,
-              style: const TextStyle(
-                fontSize: 18,
+              leading,
+              style: TextStyle(
+                color: rank is int && rank > 3 ? Colors.white : displayGoldSoft,
+                fontSize: 14,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -803,18 +794,18 @@ class DisplayLeaderboardRow extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                color: brandNavy,
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Text(
             '$points pts',
             style: const TextStyle(
-              color: primaryBlue,
-              fontSize: 15,
+              color: displayGoldSoft,
+              fontSize: 14,
               fontWeight: FontWeight.w900,
             ),
           ),

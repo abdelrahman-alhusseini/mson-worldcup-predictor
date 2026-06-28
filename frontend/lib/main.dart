@@ -923,11 +923,13 @@ class PageLane extends StatelessWidget {
     required this.child,
     this.maxContentWidth = 720,
     this.topPadding = 125,
+    this.scrollController,
   });
 
   final Widget child;
   final double maxContentWidth;
   final double topPadding;
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -941,6 +943,7 @@ class PageLane extends StatelessWidget {
                 : 18.0;
 
         return ListView(
+          controller: scrollController,
           padding: EdgeInsets.fromLTRB(horizontal, topPadding, horizontal, 110),
           children: [
             Align(
@@ -1544,6 +1547,7 @@ class HubPage extends StatefulWidget {
 
 class _HubPageState extends State<HubPage> {
   late Future<List<dynamic>> future;
+  final ScrollController scrollController = ScrollController();
 
   @override
   void initState() {
@@ -1551,7 +1555,27 @@ class _HubPageState extends State<HubPage> {
     future = widget.api.matches();
   }
 
-  void refresh() => setState(() => future = widget.api.matches());
+  @override
+  void dispose() {
+    scrollController.dispose();
+    super.dispose();
+  }
+
+  void refresh({bool keepPosition = false}) {
+    final savedOffset =
+        scrollController.hasClients ? scrollController.offset : 0.0;
+
+    setState(() => future = widget.api.matches());
+
+    if (!keepPosition) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !scrollController.hasClients) return;
+      final max = scrollController.position.maxScrollExtent;
+      final target = savedOffset.clamp(0.0, max).toDouble();
+      scrollController.jumpTo(target);
+    });
+  }
 
   Future<void> lockPrediction(
       Map<String, dynamic> match, String prediction) async {
@@ -1578,7 +1602,7 @@ class _HubPageState extends State<HubPage> {
       await widget.api.predict(match['id'] as int, prediction);
       if (mounted) {
         showSnack(context, 'Prediction locked');
-        refresh();
+        refresh(keepPosition: true);
       }
     } catch (e) {
       if (mounted) showSnack(context, e.toString(), isError: true);
@@ -1614,7 +1638,7 @@ class _HubPageState extends State<HubPage> {
       if (mounted) {
         showSnack(
             context, 'Prediction unlocked. Choose again before the deadline.');
-        refresh();
+        refresh(keepPosition: true);
       }
     } catch (e) {
       if (mounted) showSnack(context, e.toString(), isError: true);
@@ -1628,7 +1652,8 @@ class _HubPageState extends State<HubPage> {
       child: FutureBuilder<List<dynamic>>(
         future: future,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
@@ -1637,10 +1662,18 @@ class _HubPageState extends State<HubPage> {
                   message: snapshot.error.toString(), onRetry: refresh),
             );
           }
-          final matches = snapshot.data ?? [];
+          final matches =
+              (snapshot.data ?? []).cast<Map<String, dynamic>>().where((match) {
+            final status = (match['status'] ?? '').toString().toLowerCase();
+            final isFinished =
+                match['is_finished'] == true || status == 'finished';
+            return !isFinished;
+          }).toList();
+
           return PageLane(
             maxContentWidth: 820,
             topPadding: 165,
+            scrollController: scrollController,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1658,7 +1691,7 @@ class _HubPageState extends State<HubPage> {
                                   color: brandNavy)),
                           SizedBox(height: 6),
                           Text(
-                              'Predict before kickoff. Votes become visible after the match starts.',
+                              'Predict upcoming matches here. Finished games stay saved in My Picks.',
                               style: TextStyle(
                                   color: mutedNavy,
                                   fontWeight: FontWeight.w700,
@@ -1676,9 +1709,9 @@ class _HubPageState extends State<HubPage> {
                 const SizedBox(height: 18),
                 if (matches.isEmpty)
                   const EmptyState(
-                    title: 'No matches yet',
+                    title: 'No active matches',
                     message:
-                        'Matches will appear here as soon as they are added.',
+                        'Upcoming and open matches will appear here. Finished games stay saved in My Picks and Admin.',
                   )
                 else
                   LayoutBuilder(
@@ -1689,7 +1722,6 @@ class _HubPageState extends State<HubPage> {
                         spacing: 18,
                         runSpacing: 18,
                         children: matches
-                            .cast<Map<String, dynamic>>()
                             .map((match) => SizedBox(
                                   width: cardWidth,
                                   child: MatchCard(

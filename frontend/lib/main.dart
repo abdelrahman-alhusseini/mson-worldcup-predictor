@@ -1352,7 +1352,6 @@ InputDecoration _darkInputDecoration({
 }) {
   return InputDecoration(
     labelText: label,
-    hintText: hint,
     prefixIcon: Icon(icon, color: displayGoldSoft),
     labelStyle: TextStyle(
       color: Colors.white.withOpacity(.70),
